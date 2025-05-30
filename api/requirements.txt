@@ -1,0 +1,14 @@
+FROM python:3.9-slim
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Install system deps and Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_lg
+
+# Copy source
+COPY app.py word_dict.json lemma_dict.json .
+
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
