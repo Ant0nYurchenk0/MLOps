@@ -1,0 +1,20 @@
+# File: Dockerfile.preprocess
+FROM python:3.9-slim
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Install system dependencies for spaCy
+RUN apt-get update && \
+    apt-get install -y gcc g++ && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install
+COPY preprocessing/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m spacy download en_core_web_lg
+
+# Copy service code
+COPY preprocessing/app.py .
+
+EXPOSE 5001
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]

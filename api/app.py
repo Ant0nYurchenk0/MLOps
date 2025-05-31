@@ -1,10 +1,11 @@
 import os
 import json
 import tempfile
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import boto3
 import spacy
+import requests
 import numpy as np
 from keras.models import load_model
 from keras.preprocessing.sequence import pad_sequences
@@ -27,9 +28,6 @@ app = FastAPI(
     docs_url="/docs",
     openapi_url="/openapi.json",
 )
-# Load SpaCy model and build tokenizer mapping
-spacy_download("en_core_web_lg")
-nlp = spacy.load("en_core_web_lg", disable=["parser", "ner", "tagger"])
 
 # Download and cache word_dict & lemma_dict from MinIO
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
@@ -55,12 +53,16 @@ lemma_dict = download_json("lemma_dict.json")
 
 
 def text_to_sequence(text, maxlen):
-    seq = []
-    for token in nlp(text):
-        if token.pos_ != "PUNCT":
-            idx = word_dict.get(token.text, 0)
-            seq.append(idx)
-    return pad_sequences([seq], maxlen=maxlen, padding="post")
+    # Delegate to microservice
+    payload = {"text": text, "max_length": maxlen, "word_dict": word_dict}
+    resp = requests.post("http://preprocess:5001/sequence", json=payload, timeout=30)
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=500, detail=f"Preprocess API error: {resp.text}"
+        )
+    seq = resp.json()["sequence"]
+    # Already padded by the microservice, so just return it as a 2D array
+    return np.array([seq])
 
 
 # Load latest model versions from MinIO

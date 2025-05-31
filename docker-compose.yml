@@ -24,26 +24,37 @@ services:
       - ./mlruns:/mlflow/mlruns
       - ./data:/mlflow/data
 
-  # airflow:
-  #   image: apache/airflow:2.7.0-python3.10
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-  #     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://mluser:mlpass@postgres:5432/airflow
-  #     AIRFLOW__CORE__FERNET_KEY: ''
-  #     AIRFLOW__WEBSERVER__PORT: 8080
-  #   volumes:
-  #     - ./airflow/dags:/opt/airflow/dags
-  #     - ./airflow/logs:/opt/airflow/logs
-  #     - ./airflow/plugins:/opt/airflow/plugins
-  #   ports:
-  #     - "8080:8080"
-  #   command: >
-  #     bash -c "airflow db init && airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com && airflow scheduler & airflow webserver"
+  airflow:
+    build:
+      context: .                # build from project root
+      dockerfile: Dockerfile.airflow
+    depends_on:
+      - postgres
+      - minio
+      - mlflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://mluser:mlpass@postgres:5432/quora_moderation
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      LOCAL_MODEL_PATH: /tmp/models
+      MAX_LENGTH: "100"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - .:/opt/airflow/app        # Mount entire project so train_models.py can be imported
+      - ./training/requirements.txt:/requirements.txt
+    ports:
+      - "8080:8080"
+    command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && airflow scheduler & airflow webserver"
+
   minio:
     image: minio/minio
-    container_name: minio
+    container_name: minio 
     ports:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Web Console
@@ -54,20 +65,30 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: api/Dockerfile.api
-  #   depends_on:
-  #     - minio
-  #   environment:
-  #     MINIO_ENDPOINT: http://minio:9000
-  #     MINIO_USERNAME: minio
-  #     MINIO_PASSWORD: minio123
-  #     MINIO_BUCKET_NAME: embeddings
-  #     MAX_LENGTH: "100"
-  #   ports:
-  #     - "8000:8000"
+  preprocess:
+    build:
+      context: .
+      dockerfile: preprocessing/Dockerfile.preprocessing
+    ports:
+      - "5001:5001"
+    depends_on:
+      - minio
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile.api
+    depends_on:
+      - minio
+      - preprocess
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      MAX_LENGTH: "100"
+    ports:
+      - "8000:8000"
 
 volumes:
   minio_data:

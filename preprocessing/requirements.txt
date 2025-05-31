@@ -1,9 +1,5 @@
 fastapi
 uvicorn[standard]
-boto3
 spacy
-numpy
-tensorflow
-keras
 pydantic
-gensim
+python-dotenv

@@ -1,0 +1,36 @@
+# Dockerfile.airflow
+
+# 1) Use the official Airflow image with Python 3.10
+FROM apache/airflow:2.7.0-python3.10
+
+# 2) Switch to root to copy files and set permissions
+USER root
+
+# 3) Copy your combined requirements.txt (includes both Airflow & training dependencies)
+COPY training/requirements.txt /requirements.txt
+
+# 4) Ensure the file is owned by 'airflow' so pip can run as that user
+RUN chown airflow: /requirements.txt
+
+# 5) Switch to the 'airflow' user to install Python packages
+USER airflow
+
+# 6) Install all Python packages (train_models.py, preprocessing, etc.) under airflow’s home
+RUN pip install --no-cache-dir -r /requirements.txt
+
+# 7) Switch back to root to copy code and fix file permissions
+USER root
+
+# 8) Copy your entire 'training' directory into /opt/airflow/app/
+COPY training/ /opt/airflow/app/training/
+
+# 9) Copy only your DAG files into Airflow’s DAG folder
+COPY airflow/dags/ /opt/airflow/dags/
+
+# 10) Ensure the airflow user owns these new files and directories
+RUN chown -R airflow: /opt/airflow/app /opt/airflow/dags
+
+# 11) Switch back to the airflow user for runtime
+USER airflow
+
+# 12) No CMD/ENTRYPOINT here, since docker-compose.yml will launch Scheduler & Webserver
