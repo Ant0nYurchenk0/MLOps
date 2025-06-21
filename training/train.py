@@ -11,7 +11,6 @@ import mlflow
 import mlflow.keras
 from datetime import datetime, timezone
 from keras import backend as K
-from keras.preprocessing.sequence import pad_sequences
 from dotenv import load_dotenv
 import requests
 
@@ -22,10 +21,8 @@ from load_fast_text import load_fasttext
 from load_glove import load_glove
 from load_para import load_para
 from training_config import PARAMS
-from spacy.cli import download as spacy_download
 
 load_dotenv()
-spacy_download("en_core_web_lg")
 
 
 def main():
@@ -48,7 +45,9 @@ def main():
     # Call the preprocessing service to build vocab + padded sequences
     PREPROCESSOR_LINK = os.getenv("PREPROCESSOR_LINK")
     payload = {"texts": train_texts + test_texts, "max_length": PARAMS["max_length"]}
-    resp = requests.post(f"{PREPROCESSOR_LINK}/build_vocab", json=payload, timeout=600)
+    resp = requests.post(
+        f"{PREPROCESSOR_LINK}/build_vocab", json=payload, timeout=60 * 60
+    )
     if resp.status_code != 200:
         raise RuntimeError(f"Preprocess service build_vocab failed: {resp.text}")
     data = resp.json()
@@ -146,8 +145,8 @@ def main():
 
     # 1) Glove + FastText
     print("Loading GloVe + FastText embeddings …")
-    GLOVE_KEY = os.getenv("GLOVE_EMBED_KEY", "glove.840B.300d.txt")
-    FT_KEY = os.getenv("WIKI_EMBED_KEY", "wiki-news-300d-1M.vec")
+    GLOVE_KEY = os.getenv("GLOVE_EMBED_KEY")
+    FT_KEY = os.getenv("WIKI_EMBED_KEY")
 
     emb_glove = load_embedding(GLOVE_KEY, load_glove)
     emb_ft = load_embedding(FT_KEY, load_fasttext)
@@ -158,7 +157,7 @@ def main():
 
     # 2) Glove + Paragram
     print("Loading GloVe + Paragram embeddings …")
-    PARA_KEY = os.getenv("PARA_EMBED_KEY", "paragram_300_sl999.txt")
+    PARA_KEY = os.getenv("PARA_EMBED_KEY")
     emb_para = load_embedding(PARA_KEY, load_para)
     emb_gp = np.concatenate((emb_glove, emb_para), axis=1)
 

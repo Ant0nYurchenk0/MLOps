@@ -12,21 +12,21 @@ def load_data(db_uri: str):
         test_texts: List[str] of test question_text
     """
     engine = create_engine(db_uri)
-
+    connection = engine.raw_connection()
     # Training data
     train_query = """
     SELECT question_text, target
     FROM questions
     WHERE ready_to_use = TRUE
     """
-    train_df = pd.read_sql(train_query, con=engine)
+    train_df = pd.read_sql(train_query, con=connection)
 
     # Test data
     test_query = """
     SELECT question_text
     FROM questions_test
     """
-    test_df = pd.read_sql(test_query, con=engine)
+    test_df = pd.read_sql(test_query, con=connection)
 
     train_texts = train_df["question_text"].tolist()
     train_labels = train_df["target"].values

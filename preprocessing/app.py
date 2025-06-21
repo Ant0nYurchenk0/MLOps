@@ -2,6 +2,7 @@
 
 import os
 import json
+import threading
 from typing import List, Dict
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -9,6 +10,9 @@ import spacy
 from spacy.cli import download as spacy_download
 from tqdm import tqdm
 from threading import Lock
+
+cache_lock: threading.Lock = Lock()
+vocab_cache: Dict[str, BuildVocabResponse] = {}
 
 
 # ---------- Request / Response Schemas ----------
@@ -93,19 +97,28 @@ def build_vocab_and_sequences(texts: List[str], max_length: int) -> BuildVocabRe
 
 
 # ---------- Endpoints ----------
+# Thread‐safe global cache
+
+
 @app.post("/build_vocab", response_model=BuildVocabResponse)
 def build_vocab_endpoint(request: BuildVocabRequest):
-    # Simple cache key: JSON‐serialize sorted texts + max_length
+    # 1) Build a JSON key from request.texts + max_length
     cache_key = json.dumps(
         {"texts": request.texts, "max_length": request.max_length}, sort_keys=True
     )
+
+    # 2) Check cache under a lock
     with cache_lock:
         if cache_key in vocab_cache:
             return vocab_cache[cache_key]
 
+    # 3) If not cached, actually build it
     resp = build_vocab_and_sequences(request.texts, request.max_length)
+
+    # 4) Store in cache and return
     with cache_lock:
         vocab_cache[cache_key] = resp
+
     return resp
 
 

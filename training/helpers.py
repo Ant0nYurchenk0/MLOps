@@ -86,5 +86,11 @@ def stream_embeddings(obj_body):
         if len(line) > 100:  # Skip header or malformed lines
             parts = line.strip().split()
             word = parts[0]
-            coefs = np.asarray(parts[1:], dtype="float32")
+            parts_cleaned = []
+            for token in parts:
+                try:
+                    parts_cleaned.append(float(token))
+                except ValueError:
+                    parts_cleaned.append(0.0)
+            coefs = np.asarray(parts_cleaned[1:], dtype="float32")
             yield word, coefs

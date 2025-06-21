@@ -1,4 +1,4 @@
-import tqdm
+from tqdm import tqdm
 import numpy as np
 from helpers import ps, lc, sb, correction
 

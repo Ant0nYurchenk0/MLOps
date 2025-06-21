@@ -1,16 +1,6 @@
-import tqdm
+from tqdm import tqdm
 import numpy as np
 from helpers import ps, lc, sb, correction
-
-
-def stream_embeddings(obj_body):
-    for raw_line in obj_body.iter_lines():
-        line = raw_line.decode("utf-8")
-        if len(line) > 100:  # Skip header or malformed lines
-            parts = line.strip().split()
-            word = parts[0]
-            coefs = np.asarray(parts[1:], dtype="float32")
-            yield word, coefs
 
 
 def load_fasttext(word_dict, lemma_dict, embeddings_index):

@@ -179,3 +179,5 @@ data/*/*.txt
 data/*/*.vec
 data/*/*.json
 data/*/*.bin
+
+*.zip
