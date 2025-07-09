@@ -7,3 +7,6 @@ tensorflow
 keras
 pydantic
 gensim
+psycopg2-binary
+pandas
+requests

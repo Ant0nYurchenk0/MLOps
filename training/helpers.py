@@ -1,11 +1,9 @@
 import os
-import pickle
 import re
 import boto3
 from dotenv import load_dotenv
 from nltk.stem import PorterStemmer
 from nltk.stem.lancaster import LancasterStemmer
-import gensim
 from nltk.stem import SnowballStemmer
 import numpy as np
 
@@ -27,7 +25,7 @@ s3 = boto3.client(
     aws_secret_access_key=MINIO_PASSWORD,
 )
 
-print("Downloading words from MinIO…")
+# print("Downloading words from MinIO…")
 WORDS = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=WIKI_EMBED_KEY)
 
 

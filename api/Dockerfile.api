@@ -1,7 +1,7 @@
 # api/Dockerfile
 
 # 1) Base image: Python 3.9 slim (Debian-based)
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # 2) Ensure Python output is unbuffered
 ENV PYTHONUNBUFFERED=1
@@ -28,8 +28,9 @@ COPY api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && python -m spacy download en_core_web_lg
 
-# 7) Copy the FastAPI app into the container
+# 7) Copy the FastAPI app and models into the container
 COPY api/app.py .
+COPY api/models/ ./models/
 
 # 8) Expose port 8000 for uvicorn
 EXPOSE 8000

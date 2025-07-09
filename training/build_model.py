@@ -14,11 +14,8 @@ from keras.layers import Concatenate, SpatialDropout1D
 from keras.models import Model
 from keras import backend as K
 from keras import optimizers
-from training_config import PARAMS
-
-
-def build_model(embedding_matrix, nb_words, embedding_size=300):
-    inp = Input(shape=(PARAMS["max_length"],))
+def build_model(embedding_matrix, nb_words, embedding_size=300, max_length=55):
+    inp = Input(shape=(max_length,))
     x = Embedding(
         nb_words, embedding_size, weights=[embedding_matrix], trainable=False
     )(inp)
@@ -30,6 +27,5 @@ def build_model(embedding_matrix, nb_words, embedding_size=300):
     conc = Concatenate()([max_pool1, max_pool2])
     predictions = Dense(1, activation="sigmoid")(conc)
     model = Model(inputs=inp, outputs=predictions)
-    adam = optimizers.Adam(lr=PARAMS["learning_rate"])
-    model.compile(optimizer=adam, loss="binary_crossentropy", metrics=["accuracy"])
+    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
     return model

@@ -12,7 +12,7 @@ EMBEDDINGS_DIR = Path(os.getenv("EMBEDDINGS_DIR"))
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
 MINIO_USERNAME = os.getenv("MINIO_USERNAME")
 MINIO_PASSWORD = os.getenv("MINIO_PASSWORD")
-MINIO_BUCKET_NAME = os.getenv("EMBEDDINGS_BUCKET")
+MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME")
 
 # Initialize S3 client
 s3 = boto3.client(

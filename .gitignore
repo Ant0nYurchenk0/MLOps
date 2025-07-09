@@ -181,3 +181,15 @@ data/*/*.json
 data/*/*.bin
 
 *.zip
+
+mlruns/*
+mlruns/
+models/*
+models/
+
+.vscode/*
+.vscode/
+.claude/*
+.claude/
+
+*.DS_Store

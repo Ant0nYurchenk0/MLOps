@@ -9,52 +9,69 @@ def load_glove(word_dict, lemma_dict, embeddings_index):
     nb_words = len(word_dict) + 1
     embedding_matrix = np.zeros((nb_words, embed_size), dtype=np.float32)
     unknown_vector = np.zeros((embed_size,), dtype=np.float32) - 1.0
-    print(unknown_vector[:5])
     for key in tqdm(word_dict):
         word = key
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = key.lower()
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = key.upper()
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = key.capitalize()
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = ps.stem(key)
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = lc.stem(key)
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = sb.stem(key)
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         word = lemma_dict[key]
         embedding_vector = embeddings_index.get(word)
         if embedding_vector is not None:
+            if len(embedding_vector) != embed_size:
+                embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
             embedding_matrix[word_dict[key]] = embedding_vector
             continue
         if len(key) > 1:
             word = correction(key)
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
+                if len(embedding_vector) != embed_size:
+                    embedding_vector = embedding_vector[:embed_size] if len(embedding_vector) > embed_size else np.pad(embedding_vector, (0, embed_size - len(embedding_vector)), 'constant')
                 embedding_matrix[word_dict[key]] = embedding_vector
                 continue
         embedding_matrix[word_dict[key]] = unknown_vector

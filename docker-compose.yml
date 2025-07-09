@@ -8,49 +8,85 @@ services:
       POSTGRES_PASSWORD: mlpass
       POSTGRES_DB: quora_moderation
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./prerequisites/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
+    networks:
+      - mlops-network
 
   mlflow:
     build:
       context: .
-      dockerfile: mlflow/Dockerfile.mlflow
+      dockerfile: Dockerfile.mlflow
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_URI=http://mlflow:5002
     ports:
-      - "5000:5000"
+      - "5002:5000"
     volumes:
       - ./mlruns:/mlflow/mlruns
       - ./data:/mlflow/data
+    networks:
+      - mlops-network
 
-  # airflow:
-  #   build:
-  #     context: .                # build from project root
-  #     dockerfile: Dockerfile.airflow
-  #   depends_on:
-  #     - postgres
-  #     - minio
-  #     - mlflow
-  #   environment:
-  #     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-  #     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://mluser:mlpass@postgres:5432/quora_moderation
-  #     AIRFLOW__CORE__FERNET_KEY: ''
-  #     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-  #     MINIO_ENDPOINT: http://minio:9000
-  #     MINIO_USERNAME: minio
-  #     MINIO_PASSWORD: minio123
-  #     MINIO_BUCKET_NAME: embeddings
-  #     MLFLOW_TRACKING_URI: http://mlflow:5000
-  #     LOCAL_MODEL_PATH: /tmp/models
-  #     MAX_LENGTH: "100"
-  #   volumes:
-  #     - ./airflow/dags:/opt/airflow/dags
-  #     - .:/opt/airflow/app        # Mount entire project so train_models.py can be imported
-  #     - ./training/requirements.txt:/requirements.txt
-  #   ports:
-  #     - "8080:8080"
-  #   command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && airflow scheduler & airflow webserver"
+  airflow:
+    build:
+      context: .                # build from project root
+      dockerfile: Dockerfile.airflow
+    depends_on:
+      - postgres
+      - minio
+      - mlflow
+      - preprocess
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://mluser:mlpass@postgres:5432/quora_moderation
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      # Database config for training scripts
+      DB_USER: mluser
+      DB_PASSWORD: mlpass
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: quora_moderation
+      # MinIO config
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      MODEL_BUCKET: models
+      EMBEDDINGS_BUCKET: embeddings
+      # MLflow config
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      # Preprocessing service
+      PREPROCESSOR_LINK: http://preprocess:5001
+      # Model paths
+      LOCAL_MODEL_PATH: /tmp/models
+      # Embedding file keys in MinIO
+      GLOVE_EMBED_KEY: glove.840B.300d.txt
+      WIKI_EMBED_KEY: wiki-news-300d-1M.vec
+      PARA_EMBED_KEY: paragram_300_sl999.txt
+      # Data paths
+      TRAIN_PATH: /opt/airflow/app/data/csv/train.csv
+      TEST_PATH: /opt/airflow/app/data/csv/test.csv
+      HOLDOUT_PATH: /opt/airflow/app/data/csv/train_holdout.csv
+      EMBEDDINGS_DIR: /opt/airflow/app/data/embeddings
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - .:/opt/airflow/app        # Mount entire project so train_models.py can be imported
+      - ./training/requirements.txt:/requirements.txt
+    ports:
+      - "8080:8080"
+    command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && (airflow scheduler &) && airflow webserver --port 8080"
+    networks:
+      - mlops-network
 
   minio:
     image: minio/minio
@@ -64,6 +100,8 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
+    networks:
+      - mlops-network
 
   preprocess:
     build:
@@ -73,23 +111,69 @@ services:
       - "5001:5001"
     depends_on:
       - minio
+    networks:
+      - mlops-network
 
-  # api:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile.api
+    depends_on:
+      - postgres
+      - minio
+      - preprocess
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: models
+      EMBEDDINGS_BUCKET: embeddings
+      PREPROCESSOR_LINK: http://preprocess:5001
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: quora_moderation
+      DB_USER: mluser
+      DB_PASSWORD: mlpass
+    ports:
+      - "8000:8000"
+    networks:
+      - mlops-network
+
+  # data-loader:
   #   build:
   #     context: .
-  #     dockerfile: api/Dockerfile.api
+  #     dockerfile: prerequisites/Dockerfile.data-loader
   #   depends_on:
+  #     - postgres
   #     - minio
-  #     - preprocess
   #   environment:
+  #     # Database config
+  #     DB_USER: mluser
+  #     DB_PASSWORD: mlpass
+  #     DB_HOST: postgres
+  #     DB_PORT: "5432"
+  #     DB_NAME: quora_moderation
+  #     # MinIO config
   #     MINIO_ENDPOINT: http://minio:9000
   #     MINIO_USERNAME: minio
   #     MINIO_PASSWORD: minio123
   #     MINIO_BUCKET_NAME: embeddings
-  #     MAX_LENGTH: "100"
-  #   ports:
-  #     - "8000:8000"
+  #     # Data paths
+  #     TRAIN_PATH: /app/data/csv/train.csv
+  #     TEST_PATH: /app/data/csv/test.csv
+  #     HOLDOUT_PATH: /app/data/csv/train_holdout.csv
+  #     EMBEDDINGS_DIR: /app/data/embeddings
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./prerequisites/wait-for-services.sh:/app/wait-for-services.sh
+  #   command: ["bash", "/app/wait-for-services.sh"]
+  #   networks:
+  #     - mlops-network
 
 volumes:
   minio_data:
   pgdata:
+
+networks:
+  mlops-network:
+    driver: bridge

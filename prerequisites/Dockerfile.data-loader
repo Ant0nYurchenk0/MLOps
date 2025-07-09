@@ -1,0 +1,33 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional dependencies for data loading
+RUN pip install --no-cache-dir \
+    python-dotenv \
+    psycopg2-binary>2.9 \
+    sqlalchemy>=1.4.0 \
+    pandas>=1.5.0 \
+    boto3 \
+    gensim \
+    "sqlalchemy>=1.4.0"
+
+# Copy prerequisites scripts
+COPY prerequisites/ /app/prerequisites/
+
+# Create data directory
+RUN mkdir -p /app/data/csv /app/data/embeddings
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Default command (will be overridden by docker-compose)
+CMD ["echo", "Data loader ready"]

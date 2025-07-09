@@ -5,41 +5,23 @@ import json
 import threading
 from typing import List, Dict
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import spacy
 from spacy.cli import download as spacy_download
 from tqdm import tqdm
 from threading import Lock
 
+from models import BuildVocabRequest, BuildVocabResponse, SequenceRequest, SequenceResponse
+
 cache_lock: threading.Lock = Lock()
 vocab_cache: Dict[str, BuildVocabResponse] = {}
 
-
-# ---------- Request / Response Schemas ----------
-class BuildVocabRequest(BaseModel):
-    texts: List[str]  # list of all texts (train + test)
-    max_length: int
-
-
-class BuildVocabResponse(BaseModel):
-    word_dict: Dict[str, int]
-    lemma_dict: Dict[str, str]
-    sequences: List[List[int]]  # padded/truncated sequences of indices
-
-
-class SequenceRequest(BaseModel):
-    text: str
-    max_length: int
-    word_dict: Dict[str, int]
-
-
-class SequenceResponse(BaseModel):
-    sequence: List[int]
-
-
 # ---------- FastAPI App ----------
 app = FastAPI(
-    title="Preprocessing Microservice", docs_url="/docs", openapi_url="/openapi.json"
+    title="Preprocessing Microservice",
+    description="Microservice for text preprocessing and tokenization",
+    version="1.0.0",
+    docs_url="/docs",
+    openapi_url="/openapi.json"
 )
 
 # Load SpaCy model (download if missing)
@@ -102,6 +84,14 @@ def build_vocab_and_sequences(texts: List[str], max_length: int) -> BuildVocabRe
 
 @app.post("/build_vocab", response_model=BuildVocabResponse)
 def build_vocab_endpoint(request: BuildVocabRequest):
+    """Build vocabulary and convert texts to padded sequences.
+    
+    Args:
+        request: Contains list of texts and max sequence length
+        
+    Returns:
+        Dictionary mappings and padded sequences
+    """
     # 1) Build a JSON key from request.texts + max_length
     cache_key = json.dumps(
         {"texts": request.texts, "max_length": request.max_length}, sort_keys=True
@@ -124,6 +114,14 @@ def build_vocab_endpoint(request: BuildVocabRequest):
 
 @app.post("/sequence", response_model=SequenceResponse)
 def sequence_endpoint(request: SequenceRequest):
+    """Convert single text to sequence using provided vocabulary.
+    
+    Args:
+        request: Contains text, max length, and word dictionary
+        
+    Returns:
+        Padded sequence of word indices
+    """
     # Convert a single text to sequence using provided word_dict
     seq: List[int] = []
     doc = nlp(request.text)

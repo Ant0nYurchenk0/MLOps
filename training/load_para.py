@@ -9,7 +9,6 @@ def load_para(word_dict, lemma_dict, embeddings_index):
     nb_words = len(word_dict) + 1
     embedding_matrix = np.zeros((nb_words, embed_size), dtype=np.float32)
     unknown_vector = np.zeros((embed_size,), dtype=np.float32) - 1.0
-    print(unknown_vector[:5])
     for key in tqdm(word_dict):
         word = key
         embedding_vector = embeddings_index.get(word)
