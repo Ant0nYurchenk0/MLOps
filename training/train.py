@@ -28,7 +28,7 @@ load_dotenv()
 
 # Configure logging to show in Airflow
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
@@ -214,22 +214,61 @@ def main():
                 embedding_size=embedding_size,
                 max_length=max_length,
             )
-            # train full number of epochs
+            # Add validation split for better metrics
             history = model.fit(
                 train_seqs,
                 y_train,
                 batch_size=batch_size,
                 epochs=epochs,
-                verbose=1,  # Add verbose to monitor progress
+                verbose=1,
+                validation_split=0.2,  # Use 20% for validation
             )
-            for epoch_idx, loss in enumerate(history.history.get("loss", []), start=1):
-                mlflow.log_metric(f"loss_epoch_{epoch_idx}", loss)
-
-            mlflow.keras.log_model(model, artifact_path="model")
             
-            # Get final training loss for champion-challenger comparison
+            # Log detailed metrics
+            for epoch_idx, loss in enumerate(history.history.get("loss", []), start=1):
+                mlflow.log_metric(f"train_loss_epoch_{epoch_idx}", loss)
+            
+            # Log validation metrics if available
+            if "val_loss" in history.history:
+                for epoch_idx, val_loss in enumerate(history.history.get("val_loss", []), start=1):
+                    mlflow.log_metric(f"val_loss_epoch_{epoch_idx}", val_loss)
+            
+            # Log accuracy if available
+            if "accuracy" in history.history:
+                for epoch_idx, acc in enumerate(history.history.get("accuracy", []), start=1):
+                    mlflow.log_metric(f"train_accuracy_epoch_{epoch_idx}", acc)
+            
+            if "val_accuracy" in history.history:
+                for epoch_idx, val_acc in enumerate(history.history.get("val_accuracy", []), start=1):
+                    mlflow.log_metric(f"val_accuracy_epoch_{epoch_idx}", val_acc)
+            
+            # Get final metrics
             final_loss = history.history.get("loss", [])[-1]
-            mlflow.log_metric("final_loss", final_loss)
+            final_val_loss = history.history.get("val_loss", [])[-1] if "val_loss" in history.history else None
+            final_accuracy = history.history.get("accuracy", [])[-1] if "accuracy" in history.history else None
+            final_val_accuracy = history.history.get("val_accuracy", [])[-1] if "val_accuracy" in history.history else None
+            
+            # Log final metrics
+            mlflow.log_metric("final_train_loss", final_loss)
+            if final_val_loss is not None:
+                mlflow.log_metric("final_val_loss", final_val_loss)
+            if final_accuracy is not None:
+                mlflow.log_metric("final_train_accuracy", final_accuracy)
+            if final_val_accuracy is not None:
+                mlflow.log_metric("final_val_accuracy", final_val_accuracy)
+            
+            # Create input example for model signature
+            input_example = train_seqs[:5]  # Use first 5 samples as example
+            
+            # Log model with signature and input example
+            mlflow.keras.log_model(
+                model, 
+                artifact_path="model",
+                input_example=input_example
+            )
+            
+            # Use validation loss if available, otherwise training loss
+            final_loss = final_val_loss if final_val_loss is not None else final_loss
             
             # save
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

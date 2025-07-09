@@ -39,49 +39,13 @@ services:
       - mlflow
       - preprocess
       - api
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://mluser:mlpass@postgres:5432/quora_moderation
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      # Database config for training scripts
-      DB_USER: mluser
-      DB_PASSWORD: mlpass
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_NAME: quora_moderation
-      # MinIO config
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_USERNAME: minio
-      MINIO_PASSWORD: minio123
-      MINIO_BUCKET_NAME: embeddings
-      MODEL_BUCKET: models
-      EMBEDDINGS_BUCKET: embeddings
-      # MLflow config
-      MLFLOW_TRACKING_URI: http://mlflow:5000
-      # Preprocessing service
-      PREPROCESSOR_LINK: http://preprocess:5001
-      # Model paths
-      LOCAL_MODEL_PATH: /tmp/models
-      # Embedding file keys in MinIO
-      GLOVE_EMBED_KEY: glove.840B.300d.txt
-      WIKI_EMBED_KEY: wiki-news-300d-1M.vec
-      PARA_EMBED_KEY: paragram_300_sl999.txt
-      # Data paths
-      TRAIN_PATH: /opt/airflow/app/data/csv/train.csv
-      TEST_PATH: /opt/airflow/app/data/csv/test.csv
-      HOLDOUT_PATH: /opt/airflow/app/data/csv/train_holdout.csv
-      EMBEDDINGS_DIR: /opt/airflow/app/data/embeddings
     volumes:
       - ./dags:/opt/airflow/dags
-      - .:/opt/airflow/app        # Mount entire project so train_models.py can be imported
-      - ./training/requirements.txt:/requirements.txt
     ports:
       - "8080:8080"
     command: bash -c "airflow db init && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && (airflow scheduler &) && airflow webserver --port 8080"
@@ -139,36 +103,80 @@ services:
     networks:
       - mlops-network
 
-  # data-loader:
-  #   build:
-  #     context: .
-  #     dockerfile: prerequisites/Dockerfile.data-loader
-  #   depends_on:
-  #     - postgres
-  #     - minio
-  #   environment:
-  #     # Database config
-  #     DB_USER: mluser
-  #     DB_PASSWORD: mlpass
-  #     DB_HOST: postgres
-  #     DB_PORT: "5432"
-  #     DB_NAME: quora_moderation
-  #     # MinIO config
-  #     MINIO_ENDPOINT: http://minio:9000
-  #     MINIO_USERNAME: minio
-  #     MINIO_PASSWORD: minio123
-  #     MINIO_BUCKET_NAME: embeddings
-  #     # Data paths
-  #     TRAIN_PATH: /app/data/csv/train.csv
-  #     TEST_PATH: /app/data/csv/test.csv
-  #     HOLDOUT_PATH: /app/data/csv/train_holdout.csv
-  #     EMBEDDINGS_DIR: /app/data/embeddings
-  #   volumes:
-  #     - ./data:/app/data
-  #     - ./prerequisites/wait-for-services.sh:/app/wait-for-services.sh
-  #   command: ["bash", "/app/wait-for-services.sh"]
-  #   networks:
-  #     - mlops-network
+  retraining:
+    build:
+      context: .
+      dockerfile: training/Dockerfile.retraining
+    depends_on:
+      - postgres
+      - minio
+      - mlflow
+      - preprocess
+    environment:
+      # Database config
+      DB_USER: mluser
+      DB_PASSWORD: mlpass
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: quora_moderation
+      # MinIO config
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      EMBEDDINGS_BUCKET: embeddings
+      MODEL_BUCKET: models
+      # MLflow config
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      # Preprocessing service
+      PREPROCESSOR_LINK: http://preprocess:5001
+      # Model paths
+      LOCAL_MODEL_PATH: /tmp/models
+      # Embedding file keys
+      GLOVE_EMBED_KEY: glove.840B.300d.txt
+      WIKI_EMBED_KEY: wiki-news-300d-1M.vec
+      PARA_EMBED_KEY: paragram_300_sl999.txt
+    ports:
+      - "8002:8002"
+    deploy:
+      resources:
+        limits:
+          memory: 32G
+        reservations:
+          memory: 16G
+    networks:
+      - mlops-network
+
+  data-loader:
+    build:
+      context: .
+      dockerfile: prerequisites/Dockerfile.data-loader
+    depends_on:
+      - postgres
+      - minio
+    environment:
+      # Database config
+      DB_USER: mluser
+      DB_PASSWORD: mlpass
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: quora_moderation
+      # MinIO config
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      # Data paths
+      TRAIN_PATH: /app/data/csv/train.csv
+      TEST_PATH: /app/data/csv/test.csv
+      HOLDOUT_PATH: /app/data/csv/train_holdout.csv
+      EMBEDDINGS_DIR: /app/data/embeddings
+    volumes:
+      - ./data:/app/data
+      - ./prerequisites/wait-for-services.sh:/app/wait-for-services.sh
+    command: ["bash", "/app/wait-for-services.sh"]
+    networks:
+      - mlops-network
 
 volumes:
   minio_data:

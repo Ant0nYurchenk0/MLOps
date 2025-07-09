@@ -1,0 +1,17 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY training/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install fastapi uvicorn
+
+# Copy training code
+COPY training/ .
+
+# Expose port
+EXPOSE 8002
+
+# Run the retraining service
+CMD ["python", "retraining_app.py"]

@@ -6,15 +6,26 @@ import logging
 import sys
 
 def run_training():
-    """Wrapper function that handles the import at runtime"""
-    # Add the training module to Python path (it's in /opt/airflow/app/training)
-    sys.path.insert(0, '/opt/airflow/app/training')
+    """Call retraining microservice endpoint"""
+    import requests
     
-    # Import the main function from training directory
-    from train import main
-    
-    # Execute the training
-    return main()
+    try:
+        logger.info("Calling retraining microservice...")
+        
+        # Call the retraining service
+        response = requests.post("http://retraining:8002/train", timeout=7200)  # 2 hour timeout
+        
+        if response.status_code == 200:
+            result = response.json()
+            logger.info(f"Training completed: {result}")
+            return result
+        else:
+            logger.error(f"Training failed with status {response.status_code}: {response.text}")
+            raise Exception(f"Training service returned {response.status_code}: {response.text}")
+            
+    except Exception as e:
+        logger.error(f"Failed to call training service: {str(e)}")
+        raise
 
 # Enable debug logging
 logging.basicConfig(level=logging.DEBUG)
@@ -48,6 +59,9 @@ with DAG(
     retrain_task = PythonOperator(
         task_id='run_train_models_py',
         python_callable=run_training,
+        execution_timeout=timedelta(hours=2),  # Allow 2 hours for training
+        retries=2,  # Increase retries
+        retry_delay=timedelta(minutes=10),  # Longer retry delay
     )
 
     retrain_task
