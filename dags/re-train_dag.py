@@ -10,11 +10,37 @@ def run_training():
     # Add the training module to Python path (it's in /opt/airflow/app/training)
     sys.path.insert(0, '/opt/airflow/app/training')
     
-    # Import the main function from training directory
-    from train import main
+    # Check if SageMaker should be used
+    use_sagemaker = os.environ.get('USE_SAGEMAKER', 'false').lower() == 'true'
     
-    # Execute the training
-    return main()
+    if use_sagemaker:
+        logger.info("Using SageMaker for training")
+        from sagemaker_training import run_sagemaker_training
+        
+        # Get SageMaker role ARN from environment
+        role_arn = os.environ.get('SAGEMAKER_ROLE_ARN')
+        if not role_arn:
+            raise ValueError("SAGEMAKER_ROLE_ARN environment variable is required for SageMaker training")
+        
+        # Get instance type from environment
+        instance_type = os.environ.get('SAGEMAKER_INSTANCE_TYPE', 'ml.m5.large')
+        
+        # Run SageMaker training
+        result = run_sagemaker_training(
+            role_arn=role_arn,
+            instance_type=instance_type,
+            wait_for_completion=True
+        )
+        
+        logger.info(f"SageMaker training completed: {result['status']}")
+        return result
+    else:
+        logger.info("Using local training")
+        # Import the main function from training directory
+        from train import main
+        
+        # Execute the training
+        return main()
 
 # Enable debug logging
 logging.basicConfig(level=logging.DEBUG)

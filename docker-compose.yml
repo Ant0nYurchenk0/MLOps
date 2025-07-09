@@ -78,6 +78,11 @@ services:
       TEST_PATH: /opt/airflow/app/data/csv/test.csv
       HOLDOUT_PATH: /opt/airflow/app/data/csv/train_holdout.csv
       EMBEDDINGS_DIR: /opt/airflow/app/data/embeddings
+      # SageMaker configuration
+      USE_SAGEMAKER: "false"  # Set to "true" to enable SageMaker training
+      SAGEMAKER_ROLE_ARN: ""  # Add your SageMaker execution role ARN here
+      SAGEMAKER_INSTANCE_TYPE: "ml.m5.large"
+      AWS_DEFAULT_REGION: "us-east-1"
     volumes:
       - ./dags:/opt/airflow/dags
       - .:/opt/airflow/app        # Mount entire project so train_models.py can be imported
