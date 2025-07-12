@@ -80,15 +80,28 @@ def singlify(word):
 
 def stream_embeddings(obj_body):
     for raw_line in obj_body.iter_lines():
-        line = raw_line.decode("utf-8")
-        if len(line) > 100:  # Skip header or malformed lines
-            parts = line.strip().split()
-            word = parts[0]
-            parts_cleaned = []
-            for token in parts:
-                try:
-                    parts_cleaned.append(float(token))
-                except ValueError:
-                    parts_cleaned.append(0.0)
-            coefs = np.asarray(parts_cleaned[1:], dtype="float32")
-            yield word, coefs
+        try:
+            # Try UTF-8 first, then fall back to latin-1 for binary files
+            try:
+                line = raw_line.decode("utf-8")
+            except UnicodeDecodeError:
+                line = raw_line.decode("latin-1")
+            
+            if len(line) > 100:  # Skip header or malformed lines
+                parts = line.strip().split()
+                if len(parts) < 2:  # Need at least word and one coefficient
+                    continue
+                word = parts[0]
+                parts_cleaned = []
+                for token in parts[1:]:  # Skip the word, only process coefficients
+                    try:
+                        parts_cleaned.append(float(token))
+                    except ValueError:
+                        parts_cleaned.append(0.0)
+                
+                if len(parts_cleaned) > 0:  # Only yield if we have coefficients
+                    coefs = np.asarray(parts_cleaned, dtype="float32")
+                    yield word, coefs
+        except Exception as e:
+            # Skip malformed lines
+            continue

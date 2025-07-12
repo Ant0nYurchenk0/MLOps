@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS questions_test (
 CREATE TABLE IF NOT EXISTS model_registry (
     id SERIAL PRIMARY KEY,
     model_id VARCHAR(100) UNIQUE NOT NULL,
-    model_type VARCHAR(50) NOT NULL CHECK (model_type IN ('glove_fasttext', 'glove_paragram')),
+    model_type VARCHAR(50) NOT NULL,
     mlflow_run_id VARCHAR(100) NOT NULL,
     minio_path VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL CHECK (status IN ('champion', 'challenger', 'retired')) DEFAULT 'challenger',
