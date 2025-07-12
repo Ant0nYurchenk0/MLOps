@@ -149,36 +149,36 @@ services:
     networks:
       - mlops-network
 
-  # data-loader:
-  #   build:
-  #     context: .
-  #     dockerfile: prerequisites/Dockerfile.data-loader
-  #   depends_on:
-  #     - postgres
-  #     - minio
-  #   environment:
-  #     # Database config
-  #     DB_USER: mluser
-  #     DB_PASSWORD: mlpass
-  #     DB_HOST: postgres
-  #     DB_PORT: "5432"
-  #     DB_NAME: quora_moderation
-  #     # MinIO config
-  #     MINIO_ENDPOINT: http://minio:9000
-  #     MINIO_USERNAME: minio
-  #     MINIO_PASSWORD: minio123
-  #     MINIO_BUCKET_NAME: embeddings
-  #     # Data paths
-  #     TRAIN_PATH: /app/data/csv/train.csv
-  #     TEST_PATH: /app/data/csv/test.csv
-  #     HOLDOUT_PATH: /app/data/csv/train_holdout.csv
-  #     EMBEDDINGS_DIR: /app/data/embeddings
-  #   volumes:
-  #     - ./data:/app/data
-  #     - ./prerequisites/wait-for-services.sh:/app/wait-for-services.sh
-  #   command: ["bash", "/app/wait-for-services.sh"]
-  #   networks:
-  #     - mlops-network
+  data-loader:
+    build:
+      context: .
+      dockerfile: prerequisites/Dockerfile.data-loader
+    depends_on:
+      - postgres
+      - minio
+    environment:
+      # Database config
+      DB_USER: mluser
+      DB_PASSWORD: mlpass
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: quora_moderation
+      # MinIO config
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_USERNAME: minio
+      MINIO_PASSWORD: minio123
+      MINIO_BUCKET_NAME: embeddings
+      # Data paths
+      TRAIN_PATH: /app/data/csv/train.csv
+      TEST_PATH: /app/data/csv/test.csv
+      HOLDOUT_PATH: /app/data/csv/train_holdout.csv
+      EMBEDDINGS_DIR: /app/data/embeddings
+    volumes:
+      - ./data:/app/data
+      - ./prerequisites/wait-for-services.sh:/app/wait-for-services.sh
+    command: ["bash", "/app/wait-for-services.sh"]
+    networks:
+      - mlops-network
 
 volumes:
   minio_data:
