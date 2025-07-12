@@ -170,6 +170,32 @@ def predict(request: PredictRequest):
     prob = (p1 + p2) / 2
     label = int(prob >= 0.5)
 
+    # Store prediction in database
+    try:
+        import uuid
+        from datetime import datetime
+        
+        qid = f"pred_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        
+        conn = psycopg2.connect(DB_URI)
+        cursor = conn.cursor()
+        
+        # Insert prediction with both target and prediction as predicted label
+        cursor.execute("""
+            INSERT INTO questions (qid, question_text, target, prediction, ready_to_use)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (qid, request.text, label, label, False))  # both target and prediction = label, ready_to_use=False
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Stored prediction {qid} in database")
+        
+    except Exception as e:
+        print(f"⚠️ Failed to store prediction in database: {e}")
+        # Don't fail the prediction if database storage fails
+
     return PredictResponse(probability=prob, label=label)
 
 
