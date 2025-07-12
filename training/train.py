@@ -402,16 +402,16 @@ def main():
             logger.info(f"Memory usage after {model_name_suffix}: {process.memory_info().rss / 1024 / 1024:.2f} MB")
 
     # # 1) Glove + FastText
-    # logger.info("Loading GloVe + FastText embeddings …")
+    logger.info("Loading GloVe + FastText embeddings …")
     GLOVE_KEY = os.getenv("GLOVE_EMBED_KEY")
-    # FT_KEY = os.getenv("WIKI_EMBED_KEY")
+    FT_KEY = os.getenv("WIKI_EMBED_KEY")
     emb_glove, _ = load_embedding(GLOVE_KEY, load_glove)
-    # emb_ft, _ = load_embedding(FT_KEY, load_fasttext)
-    # emb_gf = np.concatenate((emb_glove, emb_ft), axis=1)
-    # logger.info("Training & saving Glove+FastText model …")
-    # train_and_save(emb_gf, "glove_fasttext")
-    # del emb_gf, emb_ft
-    # gc.collect()
+    emb_ft, _ = load_embedding(FT_KEY, load_fasttext)
+    emb_gf = np.concatenate((emb_glove, emb_ft), axis=1)
+    logger.info("Training & saving Glove+FastText model …")
+    train_and_save(emb_gf, "glove_fasttext")
+    del emb_gf, emb_ft
+    gc.collect()
     
     # 2) Glove + Paragram
     logger.info("Loading GloVe + Paragram embeddings …")
